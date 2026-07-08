@@ -1,0 +1,342 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================================
+   Design Tokens — Sistem Tabungan Qurban Masjid Al-Bina
+   Theme: Islamic Green & Gold
+   ============================================================ */
+:root {
+  /* Primary Green */
+  --clr-primary-50:  #f0fdf4;
+  --clr-primary-100: #dcfce7;
+  --clr-primary-200: #bbf7d0;
+  --clr-primary-300: #86efac;
+  --clr-primary-400: #4ade80;
+  --clr-primary-500: #22c55e;
+  --clr-primary-600: #16a34a;
+  --clr-primary-700: #15803d;
+  --clr-primary-800: #166534;
+  --clr-primary-900: #14532d;
+
+  /* Gold Accent */
+  --clr-gold-300: #fde68a;
+  --clr-gold-400: #fbbf24;
+  --clr-gold-500: #f59e0b;
+  --clr-gold-600: #d97706;
+
+  /* Neutrals */
+  --clr-surface:   #fef9e7;
+  --clr-card:      #fffdf0;
+  --clr-border:    #f0d060;
+  --clr-muted:     #92610a;
+  --clr-text:      #1a1000;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px 0 rgb(180 120 0 / 0.08);
+  --shadow-md: 0 4px 6px -1px rgb(180 120 0 / 0.15), 0 2px 4px -2px rgb(180 120 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(180 120 0 / 0.15), 0 4px 6px -4px rgb(180 120 0 / 0.1);
+  --shadow-xl: 0 20px 25px -5px rgb(180 120 0 / 0.15), 0 8px 10px -6px rgb(180 120 0 / 0.1);
+}
+
+/* ---- Base Reset ---- */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: var(--font-inter, 'Inter', sans-serif);
+  background: linear-gradient(160deg, #fef3c7 0%, #fde68a 40%, #fbbf24 80%, #f59e0b 100%);
+  background-attachment: fixed;
+  color: var(--clr-text);
+  min-height: 100vh;
+}
+
+/* ============================================================
+   Auth Pages — Split Panel Layout
+   ============================================================ */
+.auth-page {
+  @apply min-h-screen flex;
+}
+
+.auth-panel-left {
+  @apply hidden lg:flex lg:w-1/2 relative overflow-hidden;
+  background: linear-gradient(135deg, #052e16 0%, #14532d 35%, #166534 65%, #b45309 100%);
+}
+
+.auth-panel-left::before {
+  content: '';
+  @apply absolute inset-0;
+  background-image:
+    radial-gradient(circle at 20% 50%, rgba(251, 191, 36, 0.12) 0%, transparent 50%),
+    radial-gradient(circle at 80% 20%, rgba(255,255,255,0.05) 0%, transparent 40%);
+}
+
+.auth-panel-right {
+  @apply flex-1 flex items-center justify-center p-6 lg:p-12;
+  background: linear-gradient(160deg, #fef3c7 0%, #fde68a 60%, #fbbf24 100%);
+}
+
+/* ============================================================
+   Card Component
+   ============================================================ */
+.card {
+  @apply rounded-2xl p-6;
+  background: rgba(255, 253, 240, 0.85);
+  backdrop-filter: blur(8px);
+  box-shadow: var(--shadow-md), 0 0 0 1px rgba(251, 191, 36, 0.3);
+  border: 1px solid rgba(251, 191, 36, 0.4);
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.card:hover {
+  box-shadow: var(--shadow-lg), 0 0 0 1px rgba(251, 191, 36, 0.5);
+  transform: translateY(-1px);
+}
+
+/* ============================================================
+   Button Components
+   ============================================================ */
+.btn {
+  @apply inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-sm transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed;
+}
+
+.btn-primary {
+  @apply btn;
+  background: linear-gradient(135deg, #16a34a, #15803d);
+  @apply text-white shadow-md;
+  box-shadow: 0 4px 14px 0 rgba(22, 163, 74, 0.4);
+}
+.btn-primary:hover:not(:disabled) {
+  background: linear-gradient(135deg, #15803d, #14532d);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px 0 rgba(22, 163, 74, 0.5);
+}
+.btn-primary:focus-visible {
+  @apply ring-green-500;
+}
+
+.btn-gold {
+  @apply btn;
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  @apply text-white shadow-md;
+}
+.btn-gold:hover:not(:disabled) {
+  background: linear-gradient(135deg, #d97706, #b45309);
+  transform: translateY(-1px);
+}
+
+.btn-danger {
+  @apply btn bg-red-500 text-white hover:bg-red-600;
+}
+.btn-danger:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.btn-outline {
+  @apply btn border-2 border-green-600 text-green-700 bg-transparent hover:bg-green-50;
+}
+
+.btn-ghost {
+  @apply btn text-slate-600 hover:bg-slate-100;
+}
+
+/* ============================================================
+   Form Inputs
+   ============================================================ */
+.input {
+  @apply w-full px-4 py-3 rounded-xl text-slate-900 text-sm placeholder:text-amber-400
+         focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent
+         transition-all duration-200;
+  background: rgba(255, 253, 240, 0.9);
+  border: 1px solid rgba(251, 191, 36, 0.5);
+}
+
+.input:focus {
+  box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.25);
+  background: rgba(255, 255, 250, 0.95);
+}
+
+.label {
+  @apply block text-sm font-semibold mb-1.5;
+  color: #78350f;
+}
+
+.form-group {
+  @apply flex flex-col gap-1;
+}
+
+/* ============================================================
+   Status Badges
+   ============================================================ */
+.badge {
+  @apply inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold;
+}
+
+.badge-pending {
+  @apply badge bg-amber-50 text-amber-700 border border-amber-200;
+}
+
+.badge-approved {
+  @apply badge bg-green-50 text-green-700 border border-green-200;
+}
+
+.badge-rejected {
+  @apply badge bg-red-50 text-red-700 border border-red-200;
+}
+
+/* ============================================================
+   Progress Bar
+   ============================================================ */
+.progress-bar-track {
+  @apply w-full h-4 rounded-full bg-slate-100 overflow-hidden relative;
+}
+
+.progress-bar-fill {
+  @apply h-full rounded-full transition-all duration-700 ease-out;
+  background: linear-gradient(90deg, #16a34a, #4ade80, #fbbf24);
+}
+
+/* ============================================================
+   Table
+   ============================================================ */
+.table-wrapper {
+  @apply overflow-x-auto rounded-xl;
+  border: 1px solid rgba(251, 191, 36, 0.4);
+}
+
+.data-table {
+  @apply w-full text-sm;
+}
+
+.data-table thead {
+  border-bottom: 1px solid rgba(251, 191, 36, 0.4);
+  background: rgba(254, 243, 199, 0.7);
+}
+
+.data-table th {
+  @apply px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wider;
+  color: #92610a;
+}
+
+.data-table tbody tr {
+  border-bottom: 1px solid rgba(251, 191, 36, 0.2);
+  transition: background 0.15s ease;
+}
+.data-table tbody tr:last-child { border-bottom: none; }
+
+.data-table tbody tr:hover {
+  background: rgba(254, 243, 199, 0.5);
+}
+
+.data-table td {
+  @apply px-4 py-3.5;
+  color: #1a1000;
+}
+
+/* ============================================================
+   Navbar / Sidebar
+   ============================================================ */
+.navbar {
+  @apply sticky top-0 z-40 flex items-center justify-between px-6 py-4;
+  background: rgba(255, 247, 200, 0.85);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(251, 191, 36, 0.5);
+  box-shadow: 0 1px 12px rgba(180, 120, 0, 0.12);
+}
+
+/* ============================================================
+   Stats Card
+   ============================================================ */
+.stat-card {
+  @apply card flex items-center gap-4;
+}
+
+.stat-icon {
+  @apply w-14 h-14 rounded-2xl flex items-center justify-center text-2xl flex-shrink-0;
+}
+
+/* ============================================================
+   Modal
+   ============================================================ */
+.modal-overlay {
+  @apply fixed inset-0 z-50 flex items-center justify-center p-4;
+  background: rgba(120, 80, 0, 0.5);
+  backdrop-filter: blur(4px);
+  animation: fadeIn 0.2s ease;
+}
+
+.modal-box {
+  @apply rounded-2xl p-6 w-full max-w-lg shadow-2xl;
+  background: #fffdf0;
+  border: 1px solid rgba(251, 191, 36, 0.5);
+  animation: slideUp 0.25s ease;
+}
+
+/* ============================================================
+   File Dropzone
+   ============================================================ */
+.dropzone {
+  @apply flex flex-col items-center justify-center border-2 border-dashed rounded-xl p-8 cursor-pointer
+         transition-all duration-200 text-center;
+  border-color: rgba(251, 191, 36, 0.5);
+  background: rgba(254, 243, 199, 0.4);
+}
+
+.dropzone:hover, .dropzone.drag-active {
+  border-color: #f59e0b;
+  background: rgba(254, 243, 199, 0.7);
+}
+
+/* ============================================================
+   Decorative Geometric Pattern
+   ============================================================ */
+.islamic-pattern {
+  background-image:
+    repeating-linear-gradient(
+      45deg,
+      transparent,
+      transparent 10px,
+      rgba(255,255,255,0.04) 10px,
+      rgba(255,255,255,0.04) 11px
+    );
+}
+
+/* ============================================================
+   Animations
+   ============================================================ */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(20px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0)    scale(1); }
+}
+
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position:  200% 0; }
+}
+
+.animate-fadeIn { animation: fadeIn 0.4s ease both; }
+.animate-slideUp { animation: slideUp 0.4s ease both; }
+
+/* Stagger children */
+.stagger-children > *:nth-child(1) { animation-delay: 0.05s; }
+.stagger-children > *:nth-child(2) { animation-delay: 0.10s; }
+.stagger-children > *:nth-child(3) { animation-delay: 0.15s; }
+.stagger-children > *:nth-child(4) { animation-delay: 0.20s; }
+
+/* ============================================================
+   Scrollbar Styling
+   ============================================================ */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
