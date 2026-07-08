@@ -44,7 +44,7 @@ export async function GET(
     }
 
     // Kembalikan file sebagai response binary
-    return new NextResponse(file.buffer, {
+    return new NextResponse(file.buffer as unknown as BodyInit, {
       status: 200,
       headers: {
         'Content-Type': file.mimeType,

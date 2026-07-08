@@ -7,7 +7,6 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { getRows } from '@/lib/google/sheets';
-import { getFileViewLink } from '@/lib/google/drive';
 import { TransaksiWithUser } from '@/lib/types';
 
 export async function GET() {
