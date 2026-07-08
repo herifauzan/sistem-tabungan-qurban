@@ -1,0 +1,99 @@
+name: CI — Build & Lint Check
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ============================================================
+  # Job 1: Type Check + Lint + Next.js Build
+  # ============================================================
+  build:
+    name: 🔨 Build & Type Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: 📥 Checkout source
+        uses: actions/checkout@v4
+
+      - name: 🟢 Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: 📦 Install dependencies
+        run: npm ci
+
+      - name: 🔍 TypeScript type check
+        run: npx tsc --noEmit
+
+      - name: 🧹 ESLint check
+        run: npm run lint
+
+      - name: 🏗️ Build Next.js (production)
+        env:
+          # Dummy env vars — hanya untuk validasi build, bukan runtime
+          NEXTAUTH_SECRET: ci-dummy-secret-for-build-check-only
+          NEXTAUTH_URL: http://localhost:3000
+          GOOGLE_SERVICE_ACCOUNT_EMAIL: ci@ci-project.iam.gserviceaccount.com
+          GOOGLE_PRIVATE_KEY: "-----BEGIN PRIVATE KEY-----\nMIIEvAIBADANBgkqhkiG9w0BAQEFAASCBKYwggSiAgEAAoIBAQC7dummy==\n-----END PRIVATE KEY-----\n"
+          GOOGLE_SPREADSHEET_ID: dummy-spreadsheet-id
+          GOOGLE_DRIVE_FOLDER_ID: dummy-folder-id
+          NEXT_TELEMETRY_DISABLED: 1
+        run: npm run build
+
+      - name: 📊 Build summary
+        if: success()
+        run: |
+          echo "## ✅ Build Berhasil" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Check | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|---|---|" >> $GITHUB_STEP_SUMMARY
+          echo "| TypeScript | ✅ No errors |" >> $GITHUB_STEP_SUMMARY
+          echo "| ESLint | ✅ No errors |" >> $GITHUB_STEP_SUMMARY
+          echo "| Next.js build | ✅ Standalone output generated |" >> $GITHUB_STEP_SUMMARY
+
+  # ============================================================
+  # Job 2: Docker Build Check
+  # ============================================================
+  docker:
+    name: 🐳 Docker Build Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: build  # Jalankan hanya jika build job berhasil
+
+    steps:
+      - name: 📥 Checkout source
+        uses: actions/checkout@v4
+
+      - name: 🐳 Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: 🏗️ Build Docker image (tanpa push)
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: false
+          tags: sistem-tabungan-qurban:ci
+          build-args: |
+            NEXT_TELEMETRY_DISABLED=1
+          # Cache untuk mempercepat build berikutnya
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: 📊 Docker summary
+        if: success()
+        run: |
+          echo "## 🐳 Docker Build Berhasil" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Image \`sistem-tabungan-qurban:ci\` berhasil dibuild." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Untuk push ke GHCR, tambahkan secret \`GHCR_TOKEN\` di repository settings." >> $GITHUB_STEP_SUMMARY
