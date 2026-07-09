@@ -22,7 +22,8 @@ export interface UploadResult {
  */
 export async function uploadFileToLocal(
   buffer: Buffer,
-  fileName: string
+  fileName: string,
+  _mimeType: string
 ): Promise<UploadResult> {
   // Pastikan folder uploads ada
   if (!existsSync(UPLOAD_DIR)) {

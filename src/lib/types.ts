@@ -2,7 +2,7 @@
 // Shared TypeScript Types — Sistem Tabungan Qurban
 // ============================================================
 
-export type UserRole = 'Admin' | 'User' | 'Jamaah';
+export type UserRole = 'Admin' | 'User';
 
 export type TransactionStatus = 'Pending' | 'Approved' | 'Rejected';
 

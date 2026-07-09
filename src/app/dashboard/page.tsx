@@ -140,7 +140,7 @@ export default function UserDashboard() {
         {/* GREETING */}
         <div className="animate-fadeIn">
           <h1 className="text-2xl font-bold text-slate-900">
-            Assalamu&apos;alaikum, {session?.user?.name?.split(' ')[0]} 👋
+            Assalamu'alaikum, {session?.user?.name?.split(' ')[0]} 👋
           </h1>
           <p className="text-slate-500 mt-1">Pantau dan kelola tabungan Qurban Anda di sini.</p>
         </div>

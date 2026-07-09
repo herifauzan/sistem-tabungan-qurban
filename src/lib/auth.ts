@@ -15,7 +15,7 @@ function rowToJamaah(row: string[]): Jamaah {
     phone: row[2] ?? '',
     email: row[3] ?? '',
     passwordHash: row[4] ?? '',
-    role: (row[5] as 'Admin' | 'Jamaah' | 'User') ?? 'User',
+    role: (row[5] as 'Admin' | 'User') ?? 'User',
     totalSaved: parseFloat(row[6] ?? '0') || 0,
   };
 }

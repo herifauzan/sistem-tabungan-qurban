@@ -22,7 +22,7 @@ function rowToTransaksi(row: string[]): Transaksi {
 }
 
 // GET /api/transactions — list logged-in user's transactions
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
     if (!session) {
