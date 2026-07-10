@@ -5,7 +5,6 @@
 import { NextAuthOptions } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
 import bcrypt from 'bcryptjs';
-import { getRows } from '@/lib/google/sheets';
 import { Jamaah } from '@/lib/types';
 
 function rowToJamaah(row: string[]): Jamaah {
@@ -31,6 +30,9 @@ export const authOptions: NextAuthOptions = {
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null;
 
+        // Dynamically import at runtime to avoid build-time Google API calls
+        const { getRows } = await import('@/lib/google/sheets');
+        
         const rows = await getRows('Jamaah');
         const jamaahRow = rows.find(
           (row) => row[3]?.toLowerCase() === credentials.email.toLowerCase()
