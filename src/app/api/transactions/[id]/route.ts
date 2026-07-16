@@ -10,7 +10,6 @@ import { authOptions } from '@/lib/auth';
 import {
   getRows,
   updateRow,
-  findRowIndexById,
 } from '@/lib/google/sheets';
 
 const ActionSchema = z.object({
@@ -39,23 +38,20 @@ export async function PATCH(
     const { action } = parsed.data;
     const transaksiId = params.id;
 
-    // Find transaction row
-    const transaksiRowIndex = await findRowIndexById('Transaksi', transaksiId);
-    if (transaksiRowIndex === -1) {
-      return NextResponse.json(
-        { success: false, error: 'Transaksi tidak ditemukan' },
-        { status: 404 }
-      );
-    }
-
+    // ⚡ Bolt Optimization: Fetch all transactions once to prevent N+1 read bottlenecks
+    // Replaces multiple getRows/findRowIndexById calls reducing API quota and latency
     const transaksiRows = await getRows('Transaksi');
-    const transaksiRow = transaksiRows.find((r) => r[0] === transaksiId);
-    if (!transaksiRow) {
+
+    // Find transaction row and compute its 1-based index (+2 because of 0-index and header)
+    const txIndex = transaksiRows.findIndex((r) => r[0] === transaksiId);
+    if (txIndex === -1) {
       return NextResponse.json(
         { success: false, error: 'Transaksi tidak ditemukan' },
         { status: 404 }
       );
     }
+    const transaksiRowIndex = txIndex + 2;
+    const transaksiRow = transaksiRows[txIndex];
 
     // Update transaction status
     await updateRow('Transaksi', transaksiRowIndex, [
@@ -72,28 +68,27 @@ export async function PATCH(
       const userId = transaksiRow[2];
       const approvedAmount = parseFloat(transaksiRow[3]) || 0;
 
-      // Sum all Approved transactions for this user
-      const allTrans = await getRows('Transaksi');
-      const totalSaved = allTrans
-        .filter((r) => r[2] === userId && r[5] === 'Approved')
+      // Sum all Approved transactions for this user using previously fetched rows
+      const totalSaved = transaksiRows
+        .filter((r) => r[2] === userId && r[5] === 'Approved' && r[0] !== transaksiId) // exclude current in case it's already counted
         .reduce((sum, r) => sum + (parseFloat(r[3]) || 0), 0);
 
-      // Update Jamaah Total_Saved
-      const jamaahRowIndex = await findRowIndexById('Jamaah', userId);
-      if (jamaahRowIndex !== -1) {
-        const jamaahRows = await getRows('Jamaah');
-        const jamaahRow = jamaahRows.find((r) => r[0] === userId);
-        if (jamaahRow) {
-          await updateRow('Jamaah', jamaahRowIndex, [
-            jamaahRow[0], // ID
-            jamaahRow[1], // Name
-            jamaahRow[2], // Phone
-            jamaahRow[3], // Email
-            jamaahRow[4], // Password_Hash
-            jamaahRow[5], // Role
-            totalSaved + approvedAmount, // Total_Saved (recalculated)
-          ]);
-        }
+      // Fetch Jamaah rows once and compute index
+      const jamaahRows = await getRows('Jamaah');
+      const jamaahIdx = jamaahRows.findIndex((r) => r[0] === userId);
+
+      if (jamaahIdx !== -1) {
+        const jamaahRowIndex = jamaahIdx + 2;
+        const jamaahRow = jamaahRows[jamaahIdx];
+        await updateRow('Jamaah', jamaahRowIndex, [
+          jamaahRow[0], // ID
+          jamaahRow[1], // Name
+          jamaahRow[2], // Phone
+          jamaahRow[3], // Email
+          jamaahRow[4], // Password_Hash
+          jamaahRow[5], // Role
+          totalSaved + approvedAmount, // Total_Saved (recalculated)
+        ]);
       }
     }
 
