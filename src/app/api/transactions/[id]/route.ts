@@ -10,7 +10,6 @@ import { authOptions } from '@/lib/auth';
 import {
   getRows,
   updateRow,
-  findRowIndexById,
 } from '@/lib/google/sheets';
 
 const ActionSchema = z.object({
@@ -39,8 +38,13 @@ export async function PATCH(
     const { action } = parsed.data;
     const transaksiId = params.id;
 
-    // Find transaction row
-    const transaksiRowIndex = await findRowIndexById('Transaksi', transaksiId);
+    // ⚡ Bolt: Fetch 'Transaksi' sheet once and compute index/row in-memory to prevent multiple API calls.
+    const transaksiRows = await getRows('Transaksi');
+
+    // Calculate 1-based index (+1 for 0-based to 1-based, +1 for header row = +2)
+    const rowIdx = transaksiRows.findIndex((r) => r[0] === transaksiId);
+    const transaksiRowIndex = rowIdx === -1 ? -1 : rowIdx + 2;
+
     if (transaksiRowIndex === -1) {
       return NextResponse.json(
         { success: false, error: 'Transaksi tidak ditemukan' },
@@ -48,8 +52,7 @@ export async function PATCH(
       );
     }
 
-    const transaksiRows = await getRows('Transaksi');
-    const transaksiRow = transaksiRows.find((r) => r[0] === transaksiId);
+    const transaksiRow = transaksiRows[rowIdx];
     if (!transaksiRow) {
       return NextResponse.json(
         { success: false, error: 'Transaksi tidak ditemukan' },
@@ -72,17 +75,21 @@ export async function PATCH(
       const userId = transaksiRow[2];
       const approvedAmount = parseFloat(transaksiRow[3]) || 0;
 
-      // Sum all Approved transactions for this user
-      const allTrans = await getRows('Transaksi');
-      const totalSaved = allTrans
+      // ⚡ Bolt: Update the status in-memory before recalculating to ensure accurate totalSaved
+      transaksiRow[5] = action;
+
+      // ⚡ Bolt: Reuse the previously fetched transaksiRows for recalculation to save another API call.
+      const totalSaved = transaksiRows
         .filter((r) => r[2] === userId && r[5] === 'Approved')
         .reduce((sum, r) => sum + (parseFloat(r[3]) || 0), 0);
 
-      // Update Jamaah Total_Saved
-      const jamaahRowIndex = await findRowIndexById('Jamaah', userId);
+      // ⚡ Bolt: Fetch 'Jamaah' sheet once and compute index/row in-memory.
+      const jamaahRows = await getRows('Jamaah');
+      const jRowIdx = jamaahRows.findIndex((r) => r[0] === userId);
+      const jamaahRowIndex = jRowIdx === -1 ? -1 : jRowIdx + 2;
+
       if (jamaahRowIndex !== -1) {
-        const jamaahRows = await getRows('Jamaah');
-        const jamaahRow = jamaahRows.find((r) => r[0] === userId);
+        const jamaahRow = jamaahRows[jRowIdx];
         if (jamaahRow) {
           await updateRow('Jamaah', jamaahRowIndex, [
             jamaahRow[0], // ID

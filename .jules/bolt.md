@@ -1,0 +1,3 @@
+## 2026-07-18 - N+1 Read Bottlenecks with Google Sheets
+**Learning:** Combining helper functions like `findRowIndexById` (which calls `getRows`) with direct data fetching (`getRows`) can cause N+1 read bottlenecks in a Google Sheets-backed architecture. Because Sheets API calls are slow and rate-limited, this redundancy can significantly degrade performance.
+**Action:** When updating Google Sheets, fetch the target sheet data once using `getRows`. Compute required indices and aggregate data in-memory on the returned array, instead of making separate API calls for finding indices and recalculating aggregates.
