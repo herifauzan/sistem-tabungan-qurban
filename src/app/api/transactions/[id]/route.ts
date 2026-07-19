@@ -10,7 +10,6 @@ import { authOptions } from '@/lib/auth';
 import {
   getRows,
   updateRow,
-  findRowIndexById,
 } from '@/lib/google/sheets';
 
 const ActionSchema = z.object({
@@ -39,25 +38,22 @@ export async function PATCH(
     const { action } = parsed.data;
     const transaksiId = params.id;
 
-    // Find transaction row
-    const transaksiRowIndex = await findRowIndexById('Transaksi', transaksiId);
-    if (transaksiRowIndex === -1) {
-      return NextResponse.json(
-        { success: false, error: 'Transaksi tidak ditemukan' },
-        { status: 404 }
-      );
-    }
-
+    // ⚡ Bolt: Optimize Google Sheets API reads
+    // Fetch all transaction rows ONCE and find the index in-memory
+    // This avoids a redundant fetch that findRowIndexById does internally
     const transaksiRows = await getRows('Transaksi');
-    const transaksiRow = transaksiRows.find((r) => r[0] === transaksiId);
-    if (!transaksiRow) {
+    const transaksiIdx = transaksiRows.findIndex((r) => r[0] === transaksiId);
+    if (transaksiIdx === -1) {
       return NextResponse.json(
         { success: false, error: 'Transaksi tidak ditemukan' },
         { status: 404 }
       );
     }
 
-    // Update transaction status
+    const transaksiRowIndex = transaksiIdx + 2; // +1 for 0-based to 1-based, +1 for header
+    const transaksiRow = transaksiRows[transaksiIdx];
+
+    // Update transaction status in Google Sheets
     await updateRow('Transaksi', transaksiRowIndex, [
       transaksiRow[0], // ID
       transaksiRow[1], // Date
@@ -67,33 +63,35 @@ export async function PATCH(
       action,          // Status
     ]);
 
+    // ⚡ Bolt: Update in-memory row so subsequent calculations are accurate
+    transaksiRow[5] = action;
+
     // If Approved — recalculate user's Total_Saved
     if (action === 'Approved') {
       const userId = transaksiRow[2];
-      const approvedAmount = parseFloat(transaksiRow[3]) || 0;
 
-      // Sum all Approved transactions for this user
-      const allTrans = await getRows('Transaksi');
-      const totalSaved = allTrans
+      // ⚡ Bolt: Use already-fetched transaksiRows for calculation, saving an API read call
+      const totalSaved = transaksiRows
         .filter((r) => r[2] === userId && r[5] === 'Approved')
         .reduce((sum, r) => sum + (parseFloat(r[3]) || 0), 0);
 
-      // Update Jamaah Total_Saved
-      const jamaahRowIndex = await findRowIndexById('Jamaah', userId);
-      if (jamaahRowIndex !== -1) {
-        const jamaahRows = await getRows('Jamaah');
-        const jamaahRow = jamaahRows.find((r) => r[0] === userId);
-        if (jamaahRow) {
-          await updateRow('Jamaah', jamaahRowIndex, [
-            jamaahRow[0], // ID
-            jamaahRow[1], // Name
-            jamaahRow[2], // Phone
-            jamaahRow[3], // Email
-            jamaahRow[4], // Password_Hash
-            jamaahRow[5], // Role
-            totalSaved + approvedAmount, // Total_Saved (recalculated)
-          ]);
-        }
+      // ⚡ Bolt: Fetch Jamaah rows ONCE and find index in-memory
+      const jamaahRows = await getRows('Jamaah');
+      const jamaahIdx = jamaahRows.findIndex((r) => r[0] === userId);
+
+      if (jamaahIdx !== -1) {
+        const jamaahRowIndex = jamaahIdx + 2;
+        const jamaahRow = jamaahRows[jamaahIdx];
+
+        await updateRow('Jamaah', jamaahRowIndex, [
+          jamaahRow[0], // ID
+          jamaahRow[1], // Name
+          jamaahRow[2], // Phone
+          jamaahRow[3], // Email
+          jamaahRow[4], // Password_Hash
+          jamaahRow[5], // Role
+          totalSaved, // Total_Saved (recalculated, already includes the current row due to in-memory update above)
+        ]);
       }
     }
 
