@@ -10,7 +10,6 @@ import { authOptions } from '@/lib/auth';
 import {
   getRows,
   updateRow,
-  findRowIndexById,
 } from '@/lib/google/sheets';
 
 const ActionSchema = z.object({
@@ -39,23 +38,22 @@ export async function PATCH(
     const { action } = parsed.data;
     const transaksiId = params.id;
 
-    // Find transaction row
-    const transaksiRowIndex = await findRowIndexById('Transaksi', transaksiId);
-    if (transaksiRowIndex === -1) {
+    // ⚡ Bolt: Fetch Transaksi rows once to prevent multiple API calls
+    const transaksiRows = await getRows('Transaksi');
+
+    // Find transaction row index in memory
+    const tIndex = transaksiRows.findIndex((r) => r[0] === transaksiId);
+
+    if (tIndex === -1) {
       return NextResponse.json(
         { success: false, error: 'Transaksi tidak ditemukan' },
         { status: 404 }
       );
     }
 
-    const transaksiRows = await getRows('Transaksi');
-    const transaksiRow = transaksiRows.find((r) => r[0] === transaksiId);
-    if (!transaksiRow) {
-      return NextResponse.json(
-        { success: false, error: 'Transaksi tidak ditemukan' },
-        { status: 404 }
-      );
-    }
+    const transaksiRow = transaksiRows[tIndex];
+    // Convert 0-based memory index to 1-based sheet row index (offset by 2 for header + 1-based index)
+    const transaksiRowIndex = tIndex + 2;
 
     // Update transaction status
     await updateRow('Transaksi', transaksiRowIndex, [
@@ -70,30 +68,33 @@ export async function PATCH(
     // If Approved — recalculate user's Total_Saved
     if (action === 'Approved') {
       const userId = transaksiRow[2];
-      const approvedAmount = parseFloat(transaksiRow[3]) || 0;
 
+      // Update in-memory to correctly calculate the total
+      transaksiRow[5] = action;
+
+      // ⚡ Bolt: Recalculate using already fetched rows
       // Sum all Approved transactions for this user
-      const allTrans = await getRows('Transaksi');
-      const totalSaved = allTrans
+      const totalSaved = transaksiRows
         .filter((r) => r[2] === userId && r[5] === 'Approved')
         .reduce((sum, r) => sum + (parseFloat(r[3]) || 0), 0);
 
-      // Update Jamaah Total_Saved
-      const jamaahRowIndex = await findRowIndexById('Jamaah', userId);
-      if (jamaahRowIndex !== -1) {
-        const jamaahRows = await getRows('Jamaah');
-        const jamaahRow = jamaahRows.find((r) => r[0] === userId);
-        if (jamaahRow) {
-          await updateRow('Jamaah', jamaahRowIndex, [
-            jamaahRow[0], // ID
-            jamaahRow[1], // Name
-            jamaahRow[2], // Phone
-            jamaahRow[3], // Email
-            jamaahRow[4], // Password_Hash
-            jamaahRow[5], // Role
-            totalSaved + approvedAmount, // Total_Saved (recalculated)
-          ]);
-        }
+      // ⚡ Bolt: Fetch Jamaah rows once instead of twice (findRowIndexById + getRows)
+      const jamaahRows = await getRows('Jamaah');
+      const jIndex = jamaahRows.findIndex((r) => r[0] === userId);
+
+      if (jIndex !== -1) {
+        const jamaahRow = jamaahRows[jIndex];
+        const jamaahRowIndex = jIndex + 2;
+
+        await updateRow('Jamaah', jamaahRowIndex, [
+          jamaahRow[0], // ID
+          jamaahRow[1], // Name
+          jamaahRow[2], // Phone
+          jamaahRow[3], // Email
+          jamaahRow[4], // Password_Hash
+          jamaahRow[5], // Role
+          totalSaved,   // Total_Saved (recalculated with up-to-date in-memory data)
+        ]);
       }
     }
 
