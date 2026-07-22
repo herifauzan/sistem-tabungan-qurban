@@ -1,0 +1,3 @@
+## 2024-07-22 - Avoid `findRowIndexById` alongside `getRows` (O(N) network calls)
+**Learning:** In Google Sheets API operations, using helper functions like `findRowIndexById` (which calls `getRows` internally) together with `getRows` in the same endpoint causes redundant network requests. For example, the transaction approval endpoint was making up to 5 read calls, severely degrading performance and risking rate limits.
+**Action:** Always fetch the sheet rows once per request using `getRows`, and compute row indices (`rawIndex + 2`) in-memory. Additionally, update the in-memory array before aggregating (e.g. summing values) to prevent needing a subsequent refetch.
