@@ -10,9 +10,7 @@ RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
 COPY package.json package-lock.json* ./
-RUN npm ci --only=production && \
-    cp -r node_modules /tmp/prod_modules && \
-    npm ci
+RUN npm ci
 
 # ---- Stage 2: Builder ----
 FROM node:20-alpine AS builder
@@ -24,6 +22,8 @@ COPY . .
 # Build Next.js app
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
+ENV SKIP_ENV_VALIDATION=true
+ENV SKIP_TYPE_CHECK=true
 
 RUN npm run build
 

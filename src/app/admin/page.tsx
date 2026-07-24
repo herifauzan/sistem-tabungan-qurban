@@ -5,13 +5,17 @@ import { useEffect, useState, useCallback } from 'react';
 import Image from 'next/image';
 import { AdminStats, TransaksiWithUser } from '@/lib/types';
 
+// ⚡ Bolt: Cache Intl formatter instances to avoid expensive initialization on every call
+const rupiahFormatter = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 });
 function formatRupiah(n: number) {
-  return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(n);
+  return rupiahFormatter.format(n);
 }
 
+// ⚡ Bolt: Cache Intl formatter instances to avoid expensive initialization on every call
+const dateFormatter = new Intl.DateTimeFormat('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
 function formatDate(iso: string) {
   if (!iso) return '—';
-  return new Date(iso).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+  return dateFormatter.format(new Date(iso));
 }
 
 // ---- Receipt Modal ----
