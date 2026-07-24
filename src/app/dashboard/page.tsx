@@ -6,12 +6,16 @@ import Image from 'next/image';
 import { Transaksi, TipeQurban } from '@/lib/types';
 
 // ---- Helpers ----
+// ⚡ Bolt: Cache Intl formatter instances to avoid expensive initialization on every call
+const rupiahFormatter = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 });
 function formatRupiah(n: number) {
-  return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(n);
+  return rupiahFormatter.format(n);
 }
 
+// ⚡ Bolt: Cache Intl formatter instances to avoid expensive initialization on every call
+const dateFormatter = new Intl.DateTimeFormat('id-ID', { day: '2-digit', month: 'long', year: 'numeric' });
 function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' });
+  return dateFormatter.format(new Date(iso));
 }
 
 function StatusBadge({ status }: { status: string }) {

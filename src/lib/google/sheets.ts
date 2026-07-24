@@ -15,12 +15,7 @@ const BASE_DELAY_MS = 500;
 let sheetsClient: sheets_v4.Sheets | null = null;
 
 function getAuth() {
-  let privateKey = process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n');
-  if (privateKey?.startsWith('"') && privateKey?.endsWith('"')) {
-    privateKey = privateKey.slice(1, -1);
-  } else if (privateKey?.startsWith("'") && privateKey?.endsWith("'")) {
-    privateKey = privateKey.slice(1, -1);
-  }
+  const privateKey = process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n');
   return new google.auth.GoogleAuth({
     credentials: {
       client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
