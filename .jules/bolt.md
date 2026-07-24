@@ -1,0 +1,3 @@
+## 2024-07-24 - [Avoid N+1 Google Sheets Reads]
+**Learning:** Found a specific N+1 read bottleneck when querying Google Sheets. The `findRowIndexById` helper does an internal `getRows` call. Combined with subsequent `getRows` calls in the route handlers, this leads to multiple redundant network requests to Google Sheets for a single operation.
+**Action:** When updating rows and recalculating aggregates, fetch the rows once per sheet with `getRows`. Compute the 1-based index locally (`findIndex + 2`). Additionally, mutate the row's status in the local array *before* aggregation to calculate the new total properly without needing to refetch the updated data.
