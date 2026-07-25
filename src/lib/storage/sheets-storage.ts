@@ -37,35 +37,42 @@ async function getSheetsClient() {
 }
 
 // ---- Pastikan header sheet ada ----
+// ⚡ Bolt: Cache ensureSheetExists promise so it only checks once per instance lifecycle
+let ensureSheetPromise: Promise<void> | null = null;
 async function ensureSheetExists() {
-  const sheets = await getSheetsClient();
-  // Cek apakah sheet BuktiTransfer sudah ada
-  const meta = await sheets.spreadsheets.get({ spreadsheetId: SPREADSHEET_ID });
-  const sheetNames = meta.data.sheets?.map(s => s.properties?.title) ?? [];
+  if (!ensureSheetPromise) {
+    ensureSheetPromise = (async () => {
+      const sheets = await getSheetsClient();
+      // Cek apakah sheet BuktiTransfer sudah ada
+      const meta = await sheets.spreadsheets.get({ spreadsheetId: SPREADSHEET_ID });
+      const sheetNames = meta.data.sheets?.map(s => s.properties?.title) ?? [];
 
-  if (!sheetNames.includes(SHEET_NAME)) {
-    // Buat tab baru
-    await sheets.spreadsheets.batchUpdate({
-      spreadsheetId: SPREADSHEET_ID,
-      requestBody: {
-        requests: [{
-          addSheet: {
-            properties: { title: SHEET_NAME },
+      if (!sheetNames.includes(SHEET_NAME)) {
+        // Buat tab baru
+        await sheets.spreadsheets.batchUpdate({
+          spreadsheetId: SPREADSHEET_ID,
+          requestBody: {
+            requests: [{
+              addSheet: {
+                properties: { title: SHEET_NAME },
+              },
+            }],
           },
-        }],
-      },
-    });
+        });
 
-    // Tambah header row
-    await sheets.spreadsheets.values.append({
-      spreadsheetId: SPREADSHEET_ID,
-      range: `${SHEET_NAME}!A1`,
-      valueInputOption: 'USER_ENTERED',
-      requestBody: {
-        values: [['FileId', 'ChunkIdx', 'TotalChunks', 'MimeType', 'FileName', 'ChunkData', 'CreatedAt']],
-      },
-    });
+        // Tambah header row
+        await sheets.spreadsheets.values.append({
+          spreadsheetId: SPREADSHEET_ID,
+          range: `${SHEET_NAME}!A1`,
+          valueInputOption: 'USER_ENTERED',
+          requestBody: {
+            values: [['FileId', 'ChunkIdx', 'TotalChunks', 'MimeType', 'FileName', 'ChunkData', 'CreatedAt']],
+          },
+        });
+      }
+    })();
   }
+  return ensureSheetPromise;
 }
 
 // ============================================================
@@ -141,9 +148,35 @@ export async function getFileFromSheets(fileId: string): Promise<{
   await ensureSheetExists();
 
   const sheets = await getSheetsClient();
+
+  // ⚡ Bolt: Fetch only FileIds first to avoid downloading all base64 data for all files
+  const idRes = await sheets.spreadsheets.values.get({
+    spreadsheetId: SPREADSHEET_ID,
+    range: `${SHEET_NAME}!A2:A`,
+  });
+
+  const idRows = idRes.data.values ?? [];
+
+  let startIdx = -1;
+  let endIdx = -1;
+
+  for (let i = 0; i < idRows.length; i++) {
+    if (idRows[i][0] === fileId) {
+      if (startIdx === -1) startIdx = i;
+      endIdx = i;
+    }
+  }
+
+  if (startIdx === -1) return null;
+
+  // Convert to 1-based row numbers, A2 starts at index 0 + 2 = row 2
+  const startRow = startIdx + 2;
+  const endRow = endIdx + 2;
+
+  // ⚡ Bolt: Fetch only the specific row range containing the requested file's chunks
   const res = await sheets.spreadsheets.values.get({
     spreadsheetId: SPREADSHEET_ID,
-    range: `${SHEET_NAME}!A2:G`,
+    range: `${SHEET_NAME}!A${startRow}:G${endRow}`,
   });
 
   const rows = res.data.values ?? [];
