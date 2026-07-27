@@ -141,12 +141,34 @@ export async function getFileFromSheets(fileId: string): Promise<{
   await ensureSheetExists();
 
   const sheets = await getSheetsClient();
-  const res = await sheets.spreadsheets.values.get({
+
+  // ⚡ Bolt: Fetch only ID column first to avoid loading entire base64 dataset into memory
+  const idRes = await sheets.spreadsheets.values.get({
     spreadsheetId: SPREADSHEET_ID,
-    range: `${SHEET_NAME}!A2:G`,
+    range: `${SHEET_NAME}!A2:A`,
   });
 
-  const rows = res.data.values ?? [];
+  const idRows = idRes.data.values ?? [];
+  const matchingIndices: number[] = [];
+
+  for (let i = 0; i < idRows.length; i++) {
+    if (idRows[i][0] === fileId) {
+      matchingIndices.push(i + 2); // i=0 is row 2
+    }
+  }
+
+  if (matchingIndices.length === 0) return null;
+
+  const minRow = Math.min(...matchingIndices);
+  const maxRow = Math.max(...matchingIndices);
+
+  // ⚡ Bolt: Fetch only the specific row range needed for this file
+  const dataRes = await sheets.spreadsheets.values.get({
+    spreadsheetId: SPREADSHEET_ID,
+    range: `${SHEET_NAME}!A${minRow}:G${maxRow}`,
+  });
+
+  const rows = dataRes.data.values ?? [];
   // Filter baris yang sesuai fileId dan sort berdasarkan ChunkIdx
   const fileRows = rows
     .filter(r => r[0] === fileId)
