@@ -141,16 +141,41 @@ export async function getFileFromSheets(fileId: string): Promise<{
   await ensureSheetExists();
 
   const sheets = await getSheetsClient();
-  const res = await sheets.spreadsheets.values.get({
+
+  // ⚡ Bolt: Pass 1 - Fetch only the ID column to find row indices,
+  // avoiding a massive O(N) payload of base64 chunks.
+  const idRes = await sheets.spreadsheets.values.get({
     spreadsheetId: SPREADSHEET_ID,
-    range: `${SHEET_NAME}!A2:G`,
+    range: `${SHEET_NAME}!A2:A`,
   });
 
-  const rows = res.data.values ?? [];
-  // Filter baris yang sesuai fileId dan sort berdasarkan ChunkIdx
-  const fileRows = rows
-    .filter(r => r[0] === fileId)
-    .sort((a, b) => parseInt(a[1]) - parseInt(b[1]));
+  const idRows = idRes.data.values ?? [];
+
+  // Find indices for this file (1-based index + 1 for header)
+  const chunkRowIndices = idRows
+    .map((r, i) => ({ fileId: r[0], rowIndex: i + 2 }))
+    .filter(item => item.fileId === fileId)
+    .map(item => item.rowIndex);
+
+  if (chunkRowIndices.length === 0) return null;
+
+  // Assuming chunks for a file are appended sequentially or we just fetch min/max
+  const startRow = Math.min(...chunkRowIndices);
+  const endRow = Math.max(...chunkRowIndices);
+
+  // ⚡ Bolt: Pass 2 - Fetch the full row data only for the targeted range
+  const dataRes = await sheets.spreadsheets.values.get({
+    spreadsheetId: SPREADSHEET_ID,
+    range: `${SHEET_NAME}!A${startRow}:G${endRow}`,
+  });
+
+  let fileRows = dataRes.data.values ?? [];
+
+  // Ensure we only process rows for this specific fileId (in case of interleaved chunks, though unlikely)
+  fileRows = fileRows.filter(r => r[0] === fileId);
+
+  // Sort based on ChunkIdx
+  fileRows.sort((a, b) => parseInt(a[1]) - parseInt(b[1]));
 
   if (fileRows.length === 0) return null;
 
