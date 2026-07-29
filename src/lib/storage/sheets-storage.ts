@@ -141,12 +141,40 @@ export async function getFileFromSheets(fileId: string): Promise<{
   await ensureSheetExists();
 
   const sheets = await getSheetsClient();
-  const res = await sheets.spreadsheets.values.get({
+
+  // ⚡ Bolt: Two-pass fetch to prevent O(N) memory leaks.
+  // Pass 1: Fetch only the ID column to find the chunk range.
+  const idRes = await sheets.spreadsheets.values.get({
     spreadsheetId: SPREADSHEET_ID,
-    range: `${SHEET_NAME}!A2:G`,
+    range: `${SHEET_NAME}!A2:A`,
   });
 
-  const rows = res.data.values ?? [];
+  const idRows = idRes.data.values ?? [];
+
+  // Find the contiguous or non-contiguous range of rows for the fileId
+  // The first data row is at index 2 (A2)
+  let startRow = -1;
+  let endRow = -1;
+  for (let i = 0; i < idRows.length; i++) {
+    if (idRows[i][0] === fileId) {
+      if (startRow === -1) {
+        startRow = i + 2;
+      }
+      endRow = i + 2;
+    }
+  }
+
+  if (startRow === -1) return null;
+
+  // ⚡ Bolt: Pass 2: Fetch only the targeted row range containing the chunks.
+  // This avoids downloading the entire sheet's base64 data into memory.
+  const dataRes = await sheets.spreadsheets.values.get({
+    spreadsheetId: SPREADSHEET_ID,
+    range: `${SHEET_NAME}!A${startRow}:G${endRow}`,
+  });
+
+  const rows = dataRes.data.values ?? [];
+
   // Filter baris yang sesuai fileId dan sort berdasarkan ChunkIdx
   const fileRows = rows
     .filter(r => r[0] === fileId)
