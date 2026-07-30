@@ -141,22 +141,47 @@ export async function getFileFromSheets(fileId: string): Promise<{
   await ensureSheetExists();
 
   const sheets = await getSheetsClient();
-  const res = await sheets.spreadsheets.values.get({
+
+  // ⚡ Bolt: 1st Pass - Fetch only the ID column to find chunk indices
+  // Prevents O(N) memory leak from downloading ALL files' base64 data
+  const idRes = await sheets.spreadsheets.values.get({
     spreadsheetId: SPREADSHEET_ID,
-    range: `${SHEET_NAME}!A2:G`,
+    range: `${SHEET_NAME}!A2:A`,
   });
 
-  const rows = res.data.values ?? [];
-  // Filter baris yang sesuai fileId dan sort berdasarkan ChunkIdx
-  const fileRows = rows
+  const idRows = idRes.data.values ?? [];
+
+  // Find start and end indices (1-based, +1 for header)
+  let startIdx = -1;
+  let endIdx = -1;
+
+  for (let i = 0; i < idRows.length; i++) {
+    if (idRows[i][0] === fileId) {
+      if (startIdx === -1) startIdx = i + 2;
+      endIdx = i + 2;
+    }
+  }
+
+  if (startIdx === -1) return null;
+
+  // ⚡ Bolt: 2nd Pass - Fetch ONLY the rows for this specific file
+  const fileRes = await sheets.spreadsheets.values.get({
+    spreadsheetId: SPREADSHEET_ID,
+    range: `${SHEET_NAME}!A${startIdx}:G${endIdx}`,
+  });
+
+  const fileRows = fileRes.data.values ?? [];
+
+  // Verify safety (in case chunks were reordered, though unlikely)
+  const validChunks = fileRows
     .filter(r => r[0] === fileId)
     .sort((a, b) => parseInt(a[1]) - parseInt(b[1]));
 
-  if (fileRows.length === 0) return null;
+  if (validChunks.length === 0) return null;
 
-  const mimeType = fileRows[0][3] ?? 'application/octet-stream';
-  const fileName = fileRows[0][4] ?? 'file';
-  const base64 = fileRows.map(r => r[5] ?? '').join('');
+  const mimeType = validChunks[0][3] ?? 'application/octet-stream';
+  const fileName = validChunks[0][4] ?? 'file';
+  const base64 = validChunks.map(r => r[5] ?? '').join('');
   const buffer = Buffer.from(base64, 'base64');
 
   return { buffer, mimeType, fileName };
