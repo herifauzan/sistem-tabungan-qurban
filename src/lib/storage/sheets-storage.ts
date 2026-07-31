@@ -13,7 +13,7 @@
 //   F: ChunkData    — Data base64 untuk chunk ini
 //   G: CreatedAt    — Waktu upload (ISO string)
 
-import { google } from 'googleapis';
+import { google, sheets_v4 } from 'googleapis';
 import { randomBytes } from 'crypto';
 
 const SHEET_NAME = 'BuktiTransfer';
@@ -31,9 +31,14 @@ function getAuth() {
   });
 }
 
+let sheetsClient: sheets_v4.Sheets | null = null;
+
 async function getSheetsClient() {
-  const auth = getAuth();
-  return google.sheets({ version: 'v4', auth: await auth.getClient() as never });
+  if (!sheetsClient) {
+    const auth = getAuth();
+    sheetsClient = google.sheets({ version: 'v4', auth: await auth.getClient() as never });
+  }
+  return sheetsClient;
 }
 
 // ---- Pastikan header sheet ada ----
