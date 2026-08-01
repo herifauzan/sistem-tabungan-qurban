@@ -12,23 +12,27 @@ const MAX_RETRIES = 3;
 const BASE_DELAY_MS = 500;
 
 // ---- Singleton client ----
+let authClient: InstanceType<typeof google.auth.GoogleAuth> | null = null;
 let sheetsClient: sheets_v4.Sheets | null = null;
 
 function getAuth() {
-  const privateKey = process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n');
-  return new google.auth.GoogleAuth({
-    credentials: {
-      client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
-      private_key: privateKey,
-    },
-    scopes: SCOPES,
-  });
+  if (!authClient) {
+    const privateKey = process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n');
+    authClient = new google.auth.GoogleAuth({
+      credentials: {
+        client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
+        private_key: privateKey,
+      },
+      scopes: SCOPES,
+    });
+  }
+  return authClient;
 }
 
 async function getSheetsClient(): Promise<sheets_v4.Sheets> {
   if (!sheetsClient) {
     const auth = getAuth();
-    sheetsClient = google.sheets({ version: 'v4', auth: await auth.getClient() as never });
+    sheetsClient = google.sheets({ version: 'v4', auth: await auth!.getClient() as never });
   }
   return sheetsClient;
 }

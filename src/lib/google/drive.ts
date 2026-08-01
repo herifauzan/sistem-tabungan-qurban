@@ -16,23 +16,27 @@ const MAX_RETRIES = 3;
 const BASE_DELAY_MS = 500;
 
 // ---- Singleton client ----
+let authClient: InstanceType<typeof google.auth.GoogleAuth> | null = null;
 let driveClient: drive_v3.Drive | null = null;
 
 function getAuth() {
-  const privateKey = process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n');
-  return new google.auth.GoogleAuth({
-    credentials: {
-      client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
-      private_key: privateKey,
-    },
-    scopes: SCOPES,
-  });
+  if (!authClient) {
+    const privateKey = process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n');
+    authClient = new google.auth.GoogleAuth({
+      credentials: {
+        client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
+        private_key: privateKey,
+      },
+      scopes: SCOPES,
+    });
+  }
+  return authClient;
 }
 
 async function getDriveClient(): Promise<drive_v3.Drive> {
   if (!driveClient) {
     const auth = getAuth();
-    driveClient = google.drive({ version: 'v3', auth: await auth.getClient() as never });
+    driveClient = google.drive({ version: 'v3', auth: await auth!.getClient() as never });
   }
   return driveClient;
 }
