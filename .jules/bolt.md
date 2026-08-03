@@ -9,3 +9,7 @@
 ## 2026-07-20 - O(N) memory leak in Sheets File Storage downloads
 **Learning:** When using Google Sheets to store files (where file data is chunked and stored as base64 across multiple rows), fetching the entire sheet's data (e.g. `!A2:G`) causes severe scaling issues. Because the data in columns F and G contains the actual file payloads, reading the whole range downloads the base64 of *every* uploaded file into memory on each single file request, leading to memory exhaustion and latency spikes.
 **Action:** When working with blob storage via Google Sheets, optimize reads by doing a two-pass fetch: first, request only the column containing IDs (`!A2:A`), map out the `startIdx` and `endIdx` corresponding to the requested file, and then perform a targeted fetch of just that row range to retrieve the payload.
+
+## 2026-08-03 - Redundant GoogleAuth Instantiation
+**Learning:** Instantiating `new google.auth.GoogleAuth()` repeatedly circumvented the internal token caching, resulting in redundant network requests to Google's OAuth endpoint and unnecessary private key re-parsing on every API call.
+**Action:** Always cache the `GoogleAuth` instance (e.g. using a module-level singleton) alongside API clients like `sheetsClient` to take advantage of the internal access token cache. When adding typing for `GoogleAuth`, use `InstanceType<typeof google.auth.GoogleAuth>`.

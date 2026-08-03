@@ -13,16 +13,21 @@ const BASE_DELAY_MS = 500;
 
 // ---- Singleton client ----
 let sheetsClient: sheets_v4.Sheets | null = null;
+// ⚡ Bolt: Cache GoogleAuth instance to prevent redundant token network requests and private key re-parsing
+let cachedAuth: InstanceType<typeof google.auth.GoogleAuth> | null = null;
 
 function getAuth() {
-  const privateKey = process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n');
-  return new google.auth.GoogleAuth({
-    credentials: {
-      client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
-      private_key: privateKey,
-    },
-    scopes: SCOPES,
-  });
+  if (!cachedAuth) {
+    const privateKey = process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n');
+    cachedAuth = new google.auth.GoogleAuth({
+      credentials: {
+        client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
+        private_key: privateKey,
+      },
+      scopes: SCOPES,
+    });
+  }
+  return cachedAuth;
 }
 
 async function getSheetsClient(): Promise<sheets_v4.Sheets> {

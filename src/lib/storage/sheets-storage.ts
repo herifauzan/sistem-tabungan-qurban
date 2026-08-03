@@ -20,20 +20,30 @@ const SHEET_NAME = 'BuktiTransfer';
 const CHUNK_SIZE = 40_000; // max chars per cell (Google Sheets safe limit)
 const SPREADSHEET_ID = process.env.GOOGLE_SPREADSHEET_ID!;
 
+// ⚡ Bolt: Cache GoogleAuth instance to prevent redundant token network requests and private key re-parsing
+let cachedAuth: InstanceType<typeof google.auth.GoogleAuth> | null = null;
+let sheetsClient: ReturnType<typeof google.sheets> | null = null;
+
 function getAuth() {
-  const privateKey = process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n');
-  return new google.auth.GoogleAuth({
-    credentials: {
-      client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
-      private_key: privateKey,
-    },
-    scopes: ['https://www.googleapis.com/auth/spreadsheets'],
-  });
+  if (!cachedAuth) {
+    const privateKey = process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n');
+    cachedAuth = new google.auth.GoogleAuth({
+      credentials: {
+        client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
+        private_key: privateKey,
+      },
+      scopes: ['https://www.googleapis.com/auth/spreadsheets'],
+    });
+  }
+  return cachedAuth;
 }
 
 async function getSheetsClient() {
-  const auth = getAuth();
-  return google.sheets({ version: 'v4', auth: await auth.getClient() as never });
+  if (!sheetsClient) {
+    const auth = getAuth();
+    sheetsClient = google.sheets({ version: 'v4', auth: await auth.getClient() as never });
+  }
+  return sheetsClient;
 }
 
 // ---- Pastikan header sheet ada ----
