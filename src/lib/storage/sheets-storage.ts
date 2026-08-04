@@ -20,15 +20,21 @@ const SHEET_NAME = 'BuktiTransfer';
 const CHUNK_SIZE = 40_000; // max chars per cell (Google Sheets safe limit)
 const SPREADSHEET_ID = process.env.GOOGLE_SPREADSHEET_ID!;
 
+// ⚡ Bolt: Cache GoogleAuth instance to utilize internal token cache and prevent redundant OAuth network requests
+let authClient: InstanceType<typeof google.auth.GoogleAuth> | null = null;
+
 function getAuth() {
-  const privateKey = process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n');
-  return new google.auth.GoogleAuth({
-    credentials: {
-      client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
-      private_key: privateKey,
-    },
-    scopes: ['https://www.googleapis.com/auth/spreadsheets'],
-  });
+  if (!authClient) {
+    const privateKey = process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n');
+    authClient = new google.auth.GoogleAuth({
+      credentials: {
+        client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
+        private_key: privateKey,
+      },
+      scopes: ['https://www.googleapis.com/auth/spreadsheets'],
+    });
+  }
+  return authClient;
 }
 
 async function getSheetsClient() {
