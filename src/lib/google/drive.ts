@@ -18,15 +18,21 @@ const BASE_DELAY_MS = 500;
 // ---- Singleton client ----
 let driveClient: drive_v3.Drive | null = null;
 
+// ⚡ Bolt: Cache GoogleAuth instance to utilize internal token cache and prevent redundant OAuth network requests
+let authClient: InstanceType<typeof google.auth.GoogleAuth> | null = null;
+
 function getAuth() {
-  const privateKey = process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n');
-  return new google.auth.GoogleAuth({
-    credentials: {
-      client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
-      private_key: privateKey,
-    },
-    scopes: SCOPES,
-  });
+  if (!authClient) {
+    const privateKey = process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n');
+    authClient = new google.auth.GoogleAuth({
+      credentials: {
+        client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
+        private_key: privateKey,
+      },
+      scopes: SCOPES,
+    });
+  }
+  return authClient;
 }
 
 async function getDriveClient(): Promise<drive_v3.Drive> {
