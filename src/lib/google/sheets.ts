@@ -17,6 +17,9 @@ let sheetsClient: sheets_v4.Sheets | null = null;
 // ⚡ Bolt: Cache GoogleAuth instance to utilize internal token cache and prevent redundant OAuth network requests
 let authClient: InstanceType<typeof google.auth.GoogleAuth> | null = null;
 
+// ⚡ Bolt: Implement Promise Coalescing for getRows to prevent concurrent redundant API requests
+const getRowsPromises = new Map<string, Promise<string[][]>>();
+
 function getAuth() {
   if (!authClient) {
     const privateKey = process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n');
@@ -68,14 +71,27 @@ async function withRetry<T>(fn: () => Promise<T>, retries = MAX_RETRIES): Promis
  * Returns rows as string[][] — caller should map to typed objects.
  */
 export async function getRows(sheetName: string): Promise<string[][]> {
-  const sheets = await getSheetsClient();
-  return withRetry(async () => {
-    const res = await sheets.spreadsheets.values.get({
-      spreadsheetId: SPREADSHEET_ID,
-      range: `${sheetName}!A2:Z`,
+  // ⚡ Bolt: Check if a request for this sheet is already in-flight
+  if (getRowsPromises.has(sheetName)) {
+    return getRowsPromises.get(sheetName)!;
+  }
+
+  const promise = (async () => {
+    const sheets = await getSheetsClient();
+    return withRetry(async () => {
+      const res = await sheets.spreadsheets.values.get({
+        spreadsheetId: SPREADSHEET_ID,
+        range: `${sheetName}!A2:Z`,
+      });
+      return (res.data.values as string[][]) ?? [];
     });
-    return (res.data.values as string[][]) ?? [];
+  })().finally(() => {
+    // ⚡ Bolt: Remove the promise from the cache once it resolves or rejects
+    getRowsPromises.delete(sheetName);
   });
+
+  getRowsPromises.set(sheetName, promise);
+  return promise;
 }
 
 /**
