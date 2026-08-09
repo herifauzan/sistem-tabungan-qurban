@@ -63,19 +63,34 @@ async function withRetry<T>(fn: () => Promise<T>, retries = MAX_RETRIES): Promis
 // Public API
 // ============================================================
 
+// ⚡ Bolt: Promise coalescing to deduplicate in-flight requests for the same sheet.
+// This prevents concurrent requests from causing redundant network calls to the Google Sheets API.
+const pendingGetRows = new Map<string, Promise<string[][]>>();
+
 /**
  * Fetch all rows from a sheet (excluding header row).
  * Returns rows as string[][] — caller should map to typed objects.
  */
 export async function getRows(sheetName: string): Promise<string[][]> {
-  const sheets = await getSheetsClient();
-  return withRetry(async () => {
-    const res = await sheets.spreadsheets.values.get({
-      spreadsheetId: SPREADSHEET_ID,
-      range: `${sheetName}!A2:Z`,
+  if (pendingGetRows.has(sheetName)) {
+    return pendingGetRows.get(sheetName)!;
+  }
+
+  const promise = (async () => {
+    const sheets = await getSheetsClient();
+    return withRetry(async () => {
+      const res = await sheets.spreadsheets.values.get({
+        spreadsheetId: SPREADSHEET_ID,
+        range: `${sheetName}!A2:Z`,
+      });
+      return (res.data.values as string[][]) ?? [];
     });
-    return (res.data.values as string[][]) ?? [];
+  })().finally(() => {
+    pendingGetRows.delete(sheetName);
   });
+
+  pendingGetRows.set(sheetName, promise);
+  return promise;
 }
 
 /**
