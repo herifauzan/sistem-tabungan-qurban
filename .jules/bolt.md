@@ -13,3 +13,7 @@
 ## 2026-07-25 - Redundant OAuth network requests
 **Learning:** Instantiating `new google.auth.GoogleAuth` inside a function that is called repeatedly without caching the instance circumvents token caching and causes severe backend latency due to redundant OAuth token network requests.
 **Action:** When initializing Google API clients (e.g., `google.sheets` and `GoogleAuth`), cache the client instance in a module-level singleton to utilize the internal token cache. When typing the `GoogleAuth` instance in TypeScript (e.g., for module-level caching), use `InstanceType<typeof google.auth.GoogleAuth>` to avoid private member mismatch errors and TS2344 constraint errors.
+
+## 2026-07-28 - Promise Coalescing for Google Sheets API Calls
+**Learning:** Making concurrent, identical `getRows` requests for the same sheet across the application causes redundant network calls and hits rate limits, severely degrading performance. This happens frequently since pages and components concurrently request identical data (e.g., both fetching 'Jamaah').
+**Action:** Implement Promise Coalescing (in-flight request deduplication) for `getRows` by maintaining an in-memory `Map` of ongoing promises keyed by sheet name. When a concurrent request occurs while another is fetching, return the cached promise instead of initiating a new network request.
