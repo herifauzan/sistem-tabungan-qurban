@@ -63,19 +63,36 @@ async function withRetry<T>(fn: () => Promise<T>, retries = MAX_RETRIES): Promis
 // Public API
 // ============================================================
 
+// ⚡ Bolt: Cache in-flight getRows requests to prevent redundant concurrent network calls (Promise Coalescing)
+const inFlightGetRows = new Map<string, Promise<string[][]>>();
+
 /**
  * Fetch all rows from a sheet (excluding header row).
  * Returns rows as string[][] — caller should map to typed objects.
  */
 export async function getRows(sheetName: string): Promise<string[][]> {
-  const sheets = await getSheetsClient();
-  return withRetry(async () => {
-    const res = await sheets.spreadsheets.values.get({
-      spreadsheetId: SPREADSHEET_ID,
-      range: `${sheetName}!A2:Z`,
+  if (inFlightGetRows.has(sheetName)) {
+    return inFlightGetRows.get(sheetName)!;
+  }
+
+  const promise = (async () => {
+    const sheets = await getSheetsClient();
+    return withRetry(async () => {
+      const res = await sheets.spreadsheets.values.get({
+        spreadsheetId: SPREADSHEET_ID,
+        range: `${sheetName}!A2:Z`,
+      });
+      return (res.data.values as string[][]) ?? [];
     });
-    return (res.data.values as string[][]) ?? [];
-  });
+  })();
+
+  inFlightGetRows.set(sheetName, promise);
+
+  try {
+    return await promise;
+  } finally {
+    inFlightGetRows.delete(sheetName);
+  }
 }
 
 /**
