@@ -63,19 +63,37 @@ async function withRetry<T>(fn: () => Promise<T>, retries = MAX_RETRIES): Promis
 // Public API
 // ============================================================
 
+// ⚡ Bolt: In-memory Map to cache ongoing Promises for getRows (Promise Coalescing)
+// This deduplicates concurrent requests for the same sheet and prevents rate limits.
+const inFlightGetRows = new Map<string, Promise<string[][]>>();
+
 /**
  * Fetch all rows from a sheet (excluding header row).
  * Returns rows as string[][] — caller should map to typed objects.
  */
 export async function getRows(sheetName: string): Promise<string[][]> {
-  const sheets = await getSheetsClient();
-  return withRetry(async () => {
-    const res = await sheets.spreadsheets.values.get({
-      spreadsheetId: SPREADSHEET_ID,
-      range: `${sheetName}!A2:Z`,
-    });
-    return (res.data.values as string[][]) ?? [];
-  });
+  if (inFlightGetRows.has(sheetName)) {
+    return inFlightGetRows.get(sheetName)!;
+  }
+
+  const promise = (async () => {
+    try {
+      const sheets = await getSheetsClient();
+      return await withRetry(async () => {
+        const res = await sheets.spreadsheets.values.get({
+          spreadsheetId: SPREADSHEET_ID,
+          range: `${sheetName}!A2:Z`,
+        });
+        return (res.data.values as string[][]) ?? [];
+      });
+    } finally {
+      inFlightGetRows.delete(sheetName);
+    }
+  })();
+
+  inFlightGetRows.set(sheetName, promise);
+
+  return promise;
 }
 
 /**
