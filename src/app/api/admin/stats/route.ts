@@ -20,12 +20,25 @@ export async function GET() {
       getRows('Transaksi'),
     ]);
 
-    const totalUsers = jamaahRows.filter((r) => r[5] === 'User').length;
-    const pendingCount = transaksiRows.filter((r) => r[5] === 'Pending').length;
-    const approvedCount = transaksiRows.filter((r) => r[5] === 'Approved').length;
-    const totalFunds = transaksiRows
-      .filter((r) => r[5] === 'Approved')
-      .reduce((sum, r) => sum + (parseFloat(r[3]) || 0), 0);
+    // ⚡ Bolt: Single-pass loops for O(N) aggregation, avoiding temporary array allocations from .filter()
+    let totalUsers = 0;
+    for (let i = 0; i < jamaahRows.length; i++) {
+      if (jamaahRows[i][5] === 'User') totalUsers++;
+    }
+
+    let pendingCount = 0;
+    let approvedCount = 0;
+    let totalFunds = 0;
+    for (let i = 0; i < transaksiRows.length; i++) {
+      const row = transaksiRows[i];
+      const status = row[5];
+      if (status === 'Pending') {
+        pendingCount++;
+      } else if (status === 'Approved') {
+        approvedCount++;
+        totalFunds += parseFloat(row[3]) || 0;
+      }
+    }
 
     const stats: AdminStats = { totalFunds, totalUsers, pendingCount, approvedCount };
 
