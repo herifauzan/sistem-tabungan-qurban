@@ -1,7 +1,7 @@
 'use client';
 
 import { useSession, signOut } from 'next-auth/react';
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import Image from 'next/image';
 import { Transaksi, TipeQurban } from '@/lib/types';
 
@@ -66,12 +66,21 @@ export default function UserDashboard() {
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
-  const totalSaved = transaksis
-    .filter((t) => t.status === 'Approved')
-    .reduce((sum, t) => sum + t.amount, 0);
+  // ⚡ Bolt: Use useMemo to prevent redundant array allocations and calculations on every render
+  const totalSaved = useMemo(() => {
+    let sum = 0;
+    for (let i = 0; i < transaksis.length; i++) {
+      if (transaksis[i].status === 'Approved') {
+        sum += transaksis[i].amount;
+      }
+    }
+    return sum;
+  }, [transaksis]);
 
-  const targetPrice = selectedType?.price ?? 0;
-  const progress = targetPrice > 0 ? Math.min((totalSaved / targetPrice) * 100, 100) : 0;
+  const targetPrice = useMemo(() => selectedType?.price ?? 0, [selectedType]);
+  const progress = useMemo(() => targetPrice > 0 ? Math.min((totalSaved / targetPrice) * 100, 100) : 0, [targetPrice, totalSaved]);
+
+  const reversedTransaksis = useMemo(() => [...transaksis].reverse(), [transaksis]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -335,7 +344,7 @@ export default function UserDashboard() {
                   </tr>
                 </thead>
                 <tbody>
-                  {[...transaksis].reverse().map((t) => (
+                  {reversedTransaksis.map((t) => (
                     <tr key={t.id}>
                       <td className="text-slate-600 whitespace-nowrap">{formatDate(t.date)}</td>
                       <td className="font-semibold text-slate-800">{formatRupiah(t.amount)}</td>
