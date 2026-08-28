@@ -17,3 +17,7 @@
 ## 2026-07-28 - Deduplicate Concurrent Network Requests with Promise Coalescing
 **Learning:** In highly concurrent environments, multiple components or functions might request the same data simultaneously (e.g., fetching rows from a Google Sheet). If each caller initiates a separate network request, it leads to redundant API calls, latency spikes, and potential rate-limiting from the provider.
 **Action:** Implement Promise Coalescing by using an in-memory map to cache ongoing (in-flight) Promises. When a new request arrives, return the cached Promise instead of initiating a new network request, and clear the cache when the Promise resolves or rejects.
+
+## 2026-08-01 - Redundant Array Allocations in Render and API Routes
+**Learning:** Using chained array methods (like `.filter().reduce()` or `[...array].reverse()`) inside React render functions or backend API routes creates redundant iterations and unnecessary temporary array allocations. In React, this causes performance issues on every state change render loop. In backend APIs, this leads to O(N) temporary memory allocations and degrades processing throughput.
+**Action:** In React components, always wrap derived datasets with `useMemo` and avoid chained array operations where possible. In backend routes, replace chained `.filter().reduce()` operations over large datasets with single-pass `for` loops to reduce memory footprints.

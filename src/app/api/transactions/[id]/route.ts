@@ -67,10 +67,13 @@ export async function PATCH(
       const userId = transaksiRow[2];
       const approvedAmount = parseFloat(transaksiRow[3]) || 0;
 
-      // ⚡ Bolt: Reuse already fetched transaksiRows to compute totalSaved in-memory
-      const totalSaved = transaksiRows
-        .filter((r) => r[2] === userId && r[5] === 'Approved')
-        .reduce((sum, r) => sum + (parseFloat(r[3]) || 0), 0);
+      // ⚡ Bolt: Reuse already fetched transaksiRows to compute totalSaved in-memory using a single-pass loop
+      let totalSaved = 0;
+      for (let i = 0; i < transaksiRows.length; i++) {
+        if (transaksiRows[i][2] === userId && transaksiRows[i][5] === 'Approved') {
+          totalSaved += parseFloat(transaksiRows[i][3]) || 0;
+        }
+      }
 
       // ⚡ Bolt: Fetch Jamaah rows once and compute index in-memory
       const jamaahRows = await getRows('Jamaah');
