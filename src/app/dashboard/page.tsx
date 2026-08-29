@@ -1,7 +1,7 @@
 'use client';
 
 import { useSession, signOut } from 'next-auth/react';
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import Image from 'next/image';
 import { Transaksi, TipeQurban } from '@/lib/types';
 
@@ -66,12 +66,20 @@ export default function UserDashboard() {
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
-  const totalSaved = transaksis
-    .filter((t) => t.status === 'Approved')
-    .reduce((sum, t) => sum + t.amount, 0);
+  // ⚡ Bolt: Memoize derived data to avoid recalculation and array allocation on every render
+  const { totalSaved, progress } = useMemo(() => {
+    const total = transaksis
+      .filter((t) => t.status === 'Approved')
+      .reduce((sum, t) => sum + t.amount, 0);
+    const target = selectedType?.price ?? 0;
+    const prog = target > 0 ? Math.min((total / target) * 100, 100) : 0;
+    return { totalSaved: total, progress: prog };
+  }, [transaksis, selectedType]);
 
-  const targetPrice = selectedType?.price ?? 0;
-  const progress = targetPrice > 0 ? Math.min((totalSaved / targetPrice) * 100, 100) : 0;
+  // ⚡ Bolt: Memoize reversed transactions to avoid allocating a new array on every render
+  const reversedTransaksis = useMemo(() => {
+    return [...transaksis].reverse();
+  }, [transaksis]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -184,11 +192,11 @@ export default function UserDashboard() {
               </div>
               <div className="p-4 bg-amber-50 rounded-xl">
                 <p className="text-xs text-amber-600 font-semibold uppercase tracking-wide mb-1">Target</p>
-                <p className="text-xl font-bold text-amber-700">{formatRupiah(targetPrice)}</p>
+                <p className="text-xl font-bold text-amber-700">{formatRupiah(selectedType?.price ?? 0)}</p>
               </div>
               <div className="p-4 bg-slate-50 rounded-xl col-span-2 sm:col-span-1">
                 <p className="text-xs text-slate-500 font-semibold uppercase tracking-wide mb-1">Sisa</p>
-                <p className="text-xl font-bold text-slate-700">{formatRupiah(Math.max(targetPrice - totalSaved, 0))}</p>
+                <p className="text-xl font-bold text-slate-700">{formatRupiah(Math.max((selectedType?.price ?? 0) - totalSaved, 0))}</p>
               </div>
             </div>
 
@@ -335,7 +343,7 @@ export default function UserDashboard() {
                   </tr>
                 </thead>
                 <tbody>
-                  {[...transaksis].reverse().map((t) => (
+                  {reversedTransaksis.map((t) => (
                     <tr key={t.id}>
                       <td className="text-slate-600 whitespace-nowrap">{formatDate(t.date)}</td>
                       <td className="font-semibold text-slate-800">{formatRupiah(t.amount)}</td>
