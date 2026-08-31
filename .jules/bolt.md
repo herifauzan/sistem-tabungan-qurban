@@ -17,3 +17,6 @@
 ## 2026-07-28 - Deduplicate Concurrent Network Requests with Promise Coalescing
 **Learning:** In highly concurrent environments, multiple components or functions might request the same data simultaneously (e.g., fetching rows from a Google Sheet). If each caller initiates a separate network request, it leads to redundant API calls, latency spikes, and potential rate-limiting from the provider.
 **Action:** Implement Promise Coalescing by using an in-memory map to cache ongoing (in-flight) Promises. When a new request arrives, return the cached Promise instead of initiating a new network request, and clear the cache when the Promise resolves or rejects.
+## 2024-05-15 - Array Method Anti-patterns in Admin Stats
+**Learning:** NextJS backend endpoints were redundantly traversing large datasets (e.g. `transaksiRows`) via chained `.filter().length` and `.filter().reduce()`. These chains allocate intermediate arrays in V8, causing excess GC pressure and wasting CPU cycles.
+**Action:** Replaced chained methods with single-pass `for` loops to minimize GC allocation and runtime overhead for aggregation APIs.
