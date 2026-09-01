@@ -17,3 +17,6 @@
 ## 2026-07-28 - Deduplicate Concurrent Network Requests with Promise Coalescing
 **Learning:** In highly concurrent environments, multiple components or functions might request the same data simultaneously (e.g., fetching rows from a Google Sheet). If each caller initiates a separate network request, it leads to redundant API calls, latency spikes, and potential rate-limiting from the provider.
 **Action:** Implement Promise Coalescing by using an in-memory map to cache ongoing (in-flight) Promises. When a new request arrives, return the cached Promise instead of initiating a new network request, and clear the cache when the Promise resolves or rejects.
+## 2024-07-26 - Optimizing array aggregations on Backend
+**Learning:** Chaining multiple array methods like `.filter()`, `.reduce()`, or `.length` across the same large dataset (e.g., Google Sheets rows) creates redundant iterations and allocates temporary memory arrays for each step. This can increase latency significantly.
+**Action:** Replace multiple chained iterations over the same dataset with a single-pass `for` loop to compute all required aggregations (counts, sums) simultaneously when the data set is large and latency is a concern. Avoid sacrificing declarative readability (`.filter().map()`) for simple or non-repeated operations.
