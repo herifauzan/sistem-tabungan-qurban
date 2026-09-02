@@ -1,7 +1,7 @@
 'use client';
 
 import { useSession, signOut } from 'next-auth/react';
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import Image from 'next/image';
 import { Transaksi, TipeQurban } from '@/lib/types';
 
@@ -66,9 +66,17 @@ export default function UserDashboard() {
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
-  const totalSaved = transaksis
-    .filter((t) => t.status === 'Approved')
-    .reduce((sum, t) => sum + t.amount, 0);
+  // ⚡ Bolt: Wrap derived dataset computation in useMemo to prevent redundant iteration on every render
+  const totalSaved = useMemo(() => {
+    return transaksis
+      .filter((t) => t.status === 'Approved')
+      .reduce((sum, t) => sum + t.amount, 0);
+  }, [transaksis]);
+
+  // ⚡ Bolt: Cache [...array].reverse() to prevent allocating a new array on every render
+  const reversedTransaksis = useMemo(() => {
+    return [...transaksis].reverse();
+  }, [transaksis]);
 
   const targetPrice = selectedType?.price ?? 0;
   const progress = targetPrice > 0 ? Math.min((totalSaved / targetPrice) * 100, 100) : 0;
@@ -335,7 +343,7 @@ export default function UserDashboard() {
                   </tr>
                 </thead>
                 <tbody>
-                  {[...transaksis].reverse().map((t) => (
+                  {reversedTransaksis.map((t) => (
                     <tr key={t.id}>
                       <td className="text-slate-600 whitespace-nowrap">{formatDate(t.date)}</td>
                       <td className="font-semibold text-slate-800">{formatRupiah(t.amount)}</td>

@@ -1,7 +1,7 @@
 'use client';
 
 import { useSession, signOut } from 'next-auth/react';
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import Image from 'next/image';
 import { AdminStats, TransaksiWithUser } from '@/lib/types';
 
@@ -154,9 +154,13 @@ export default function AdminDashboard() {
     }
   }
 
-  const displayed = filter === 'Pending'
-    ? transactions.filter((t) => t.status === 'Pending')
-    : transactions;
+  // ⚡ Bolt: Use useMemo to prevent allocating array filters and reversing logic on every render
+  const displayedTransactions = useMemo(() => {
+    const displayed = filter === 'Pending'
+      ? transactions.filter((t) => t.status === 'Pending')
+      : transactions;
+    return [...displayed].reverse();
+  }, [filter, transactions]);
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -266,7 +270,7 @@ export default function AdminDashboard() {
               </svg>
               Memuat data transaksi...
             </div>
-          ) : displayed.length === 0 ? (
+          ) : displayedTransactions.length === 0 ? (
             <div className="text-center py-16 text-slate-400">
               <span className="text-5xl block mb-3">🎉</span>
               <p className="font-semibold">
@@ -287,7 +291,7 @@ export default function AdminDashboard() {
                   </tr>
                 </thead>
                 <tbody>
-                  {[...displayed].reverse().map((t) => {
+                  {displayedTransactions.map((t) => {
                     const isActing = actionLoading?.startsWith(t.id);
                     return (
                       <tr key={t.id}>
