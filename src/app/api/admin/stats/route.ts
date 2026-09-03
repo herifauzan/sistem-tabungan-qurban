@@ -20,12 +20,25 @@ export async function GET() {
       getRows('Transaksi'),
     ]);
 
-    const totalUsers = jamaahRows.filter((r) => r[5] === 'User').length;
-    const pendingCount = transaksiRows.filter((r) => r[5] === 'Pending').length;
-    const approvedCount = transaksiRows.filter((r) => r[5] === 'Approved').length;
-    const totalFunds = transaksiRows
-      .filter((r) => r[5] === 'Approved')
-      .reduce((sum, r) => sum + (parseFloat(r[3]) || 0), 0);
+    // ⚡ Bolt: Replace multiple filter/reduce passes with a single-pass loop
+    // This avoids creating temporary arrays and iterating the dataset multiple times,
+    // which is critical since the entire Sheets data is loaded into memory.
+    let totalUsers = 0;
+    for (const r of jamaahRows) {
+      if (r[5] === 'User') totalUsers++;
+    }
+
+    let pendingCount = 0;
+    let approvedCount = 0;
+    let totalFunds = 0;
+    for (const r of transaksiRows) {
+      if (r[5] === 'Pending') {
+        pendingCount++;
+      } else if (r[5] === 'Approved') {
+        approvedCount++;
+        totalFunds += parseFloat(r[3]) || 0;
+      }
+    }
 
     const stats: AdminStats = { totalFunds, totalUsers, pendingCount, approvedCount };
 
