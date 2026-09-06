@@ -17,3 +17,7 @@
 ## 2026-07-28 - Deduplicate Concurrent Network Requests with Promise Coalescing
 **Learning:** In highly concurrent environments, multiple components or functions might request the same data simultaneously (e.g., fetching rows from a Google Sheet). If each caller initiates a separate network request, it leads to redundant API calls, latency spikes, and potential rate-limiting from the provider.
 **Action:** Implement Promise Coalescing by using an in-memory map to cache ongoing (in-flight) Promises. When a new request arrives, return the cached Promise instead of initiating a new network request, and clear the cache when the Promise resolves or rejects.
+
+## 2024-09-06 - React hook placement inside map loops
+**Learning:** Placing hooks such as `useMemo` inside JSX map loop expressions like `{useMemo(() => [...arr].reverse(), [arr]).map()}` is a violation of React's Rules of Hooks because hooks must be called unconditionally and at the top level of the component body, resulting in "React Hook is called conditionally" errors from the linter.
+**Action:** When memoizing derived lists for rendering in JSX, extract the `useMemo` to the top level component scope, creating a new memoized variable (e.g., `const reversedList = useMemo(...)`), and then use that variable within the JSX instead.
