@@ -1,7 +1,7 @@
 'use client';
 
 import { useSession, signOut } from 'next-auth/react';
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import Image from 'next/image';
 import { AdminStats, TransaksiWithUser } from '@/lib/types';
 
@@ -154,9 +154,13 @@ export default function AdminDashboard() {
     }
   }
 
-  const displayed = filter === 'Pending'
-    ? transactions.filter((t) => t.status === 'Pending')
-    : transactions;
+  // ⚡ Bolt: Memoize derived array to prevent allocating a new array on every render
+  const displayed = useMemo(() => {
+    const filtered = filter === 'Pending'
+      ? transactions.filter((t) => t.status === 'Pending')
+      : transactions;
+    return [...filtered].reverse();
+  }, [filter, transactions]);
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -287,7 +291,7 @@ export default function AdminDashboard() {
                   </tr>
                 </thead>
                 <tbody>
-                  {[...displayed].reverse().map((t) => {
+                  {displayed.map((t) => {
                     const isActing = actionLoading?.startsWith(t.id);
                     return (
                       <tr key={t.id}>
